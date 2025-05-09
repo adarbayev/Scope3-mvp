@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scope 3.1 Emissions Calculator MVP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(135deg, #E0F2FE 0%, #ffffff 50%, #E0F2FE 100%); 
+            overflow-x: hidden; 
+        }
+        .main-container-wrapper { 
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Landing Page Styles */
+        #landingPageSection {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            min-height: calc(100vh - 50px); /* Adjust for footer height if footer is part of this view directly */
+            padding: 2rem;
+            box-sizing: border-box;
+            transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+        }
+        #landingPageSection.hidden-transition {
+            opacity: 0;
+            transform: scale(0.95) translateY(20px);
+            pointer-events: none; 
+        }
+        .landing-title {
+            font-size: 2.5rem; /* Tailwind text-4xl */
+            sm:font-size: 3.75rem; /* Tailwind sm:text-6xl */
+            font-weight: 800; 
+            color: #1E3A8A; 
+            margin-bottom: 1rem;
+        }
+        .landing-description {
+            font-size: 1.125rem; 
+            sm:font-size: 1.25rem; 
+            color: #374151; 
+            max-width: 600px;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        .try-tool-button {
+            background-color: #2563EB; 
+            color: white;
+            padding: 0.75rem 2rem; 
+            font-size: 1.125rem; 
+            font-weight: 600; 
+            border-radius: 0.5rem; 
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); 
+            transition: all 0.3s ease;
+            transform-origin: center;
+        }
+        .try-tool-button:hover {
+            background-color: #1D4ED8; 
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); 
+            transform: scale(1.05);
+        }
+        .try-tool-button:active {
+            transform: scale(0.98);
+        }
+
+        #appSection {
+            opacity: 0;
+            transform: translateY(20px) scale(0.98);
+            transition: opacity 0.7s ease-in 0.3s, transform 0.7s ease-in 0.3s; 
+            display: flex; 
+            flex-direction: column;
+            align-items: center;
+            padding: 1rem 0.5rem; 
+            sm:padding: 2rem 1rem;
+            width: 100%;
+            box-sizing: border-box;
+            min-height: calc(100vh - 50px); /* Adjust if footer is separate */
+        }
+        #appSection.visible {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+        .app-card { 
+             background-color: white;
+             padding: 1rem 0.5rem; 
+             sm:padding: 1.5rem; 
+             border-radius: 0.5rem; 
+             box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); 
+             width: 100%;
+             max-width: 48rem; 
+        }
+
+        .form-select, .form-input, .form-radio {
+            border-radius: 0.375rem; border-width: 1px; border-color: #D1D5DB; padding: 0.5rem 0.75rem; 
+        }
+        .form-radio { padding: 0; margin-right: 0.25rem; }
+        .form-select:focus, .form-input:focus {
+            outline: 2px solid transparent; outline-offset: 2px; border-color: #60A5FA; box-shadow: 0 0 0 2px #BFDBFE; 
+        }
+        .btn { border-radius: 0.375rem; padding: 0.5rem 1rem; font-weight: 600; transition: background-color 0.2s; }
+        .btn-primary { background-color: #3B82F6; color: white; }
+        .btn-primary:hover { background-color: #2563EB; }
+        .btn-secondary { background-color: #6B7280; color: white; }
+        .btn-secondary:hover { background-color: #4B5563; }
+
+        .results-table-container::-webkit-scrollbar { width: 8px; height: 8px; }
+        .results-table-container::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        .results-table-container::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+        .results-table-container::-webkit-scrollbar-thumb:hover { background: #555; }
+        
+        .message-box {
+            position: fixed; top: 20px; right: 20px; padding: 1rem; border-radius: 0.375rem;
+            color: white; z-index: 1060; opacity: 0; transform: translateY(-20px);
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+        }
+        .message-box.success { background-color: #10B981; }
+        .message-box.error { background-color: #EF4444; }
+        .message-box.show { opacity: 1; transform: translateY(0); }
+
+        .modal-overlay { 
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.5);
+            display: flex; align-items: center; justify-content: center; z-index: 1050;
+            opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-overlay.show { opacity: 1; visibility: visible; }
+        .modal-content { 
+            background-color: white; padding: 1.5rem; border-radius: 0.5rem; 
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); 
+            width: 90%; max-width: 600px; max-height: 85vh; overflow-y: auto;
+        }
+        .info-icon { cursor: pointer; color: #3B82F6; margin-left: 8px; vertical-align: middle; }
+        .info-icon:hover { color: #2563EB; }
+        .footer { text-align: center; padding: 1rem; font-size: 0.875rem; color: #6B7280; width: 100%; margin-top:auto; /* Ensures it's at the bottom of flex container */}
+        .optional-section-container { border: 1px dashed #9CA3AF; padding: 1rem; margin-top: 1rem; border-radius: 0.375rem; }
+        .hidden { display: none !important; } 
+
+        .tab-container { border-bottom: 2px solid #E5E7EB; margin-bottom: 1.5rem; }
+        .tab-button {
+            padding: 0.75rem 1.5rem; cursor: pointer; border: none; background-color: transparent;
+            font-size: 1rem; font-weight: 500; color: #6B7280; 
+            border-bottom: 2px solid transparent; margin-bottom: -2px; 
+        }
+        .tab-button.active { color: #3B82F6; border-bottom-color: #3B82F6; }
+        .tab-content { padding-top: 1rem; }
+        .documentation-section h3 { font-size: 1.125rem; font-weight: 600; margin-top: 1rem; margin-bottom: 0.5rem; color: #1F2937; }
+        .documentation-section p, .documentation-section ul, .documentation-section ol { margin-bottom: 0.75rem; color: #4B5563; line-height: 1.6; }
+        .documentation-section ul, .documentation-section ol { list-style-position: inside; }
+        .documentation-section ul { list-style-type: disc; margin-left: 1rem; }
+        .documentation-section ol { list-style-type: decimal; margin-left: 1rem; }
+        .documentation-section code { background-color: #F3F4F6; padding: 0.1rem 0.3rem; border-radius: 0.25rem; font-family: monospace; }
+
+        .fullscreen-table-modal {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: rgba(255, 255, 255, 0.98); z-index: 1040;
+            padding: 2rem; box-sizing: border-box; opacity: 0; transform: scale(0.95);
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .fullscreen-table-modal.active { opacity: 1; transform: scale(1); }
+        .fullscreen-table-modal .modal-table-content {
+            background-color: white; padding: 2rem; border-radius: 0.5rem;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+            width: 95%; max-width: 1400px; height: 90vh; display: flex; flex-direction: column;
+        }
+        .fullscreen-table-modal .results-table-container {
+            flex-grow: 1; max-height: calc(90vh - 100px); 
+        }
+        .fullscreen-table-modal .close-btn-container { text-align: right; margin-bottom: 1rem; }
+    </style>
+</head>
+<body>
+    <div id="messageBox" class="message-box"></div>
+
+    <div class="main-container-wrapper">
+        <section id="landingPageSection">
+            <h1 class="landing-title">Scope 3 - PGS - Calculator</h1>
+            <p class="landing-description">
+                Automatically map emission factors for your Purchased Goods and Services (PGS). 
+                This tool helps you estimate Scope 3.1 emissions by leveraging a simplified database 
+                (principles mocked from EcoInvent 3.9.1) and allows for supplier-specific data input.
+            </p>
+            <button id="tryToolButton" class="try-tool-button">Try the Tool</button>
+        </section>
+
+        <section id="appSection" class="hidden">
+            <div class="app-card"> 
+                <h1 class="text-xl sm:text-2xl font-bold text-center text-gray-800 mb-4"> 
+                    VPW MVP - Scope 3.1 Emissions Calculator
+                </h1>
+                <div class="tab-container flex">
+                    <button id="tabCalculator" class="tab-button active" onclick="showTab('calculator')">Calculator</button>
+                    <button id="tabDocumentation" class="tab-button" onclick="showTab('documentation')">Documentation</button>
+                </div>
+                <div id="calculatorContent" class="tab-content">
+                    <form id="emissionForm" class="space-y-6">
+                        <div><label for="reportingYear" class="block text-sm font-medium text-gray-700 mb-1">Reporting Year</label><input type="number" id="reportingYear" name="reportingYear" class="form-input w-full" placeholder="e.g., 2023" value="2023"></div>
+                        <div><label for="productCategory" class="block text-sm font-medium text-gray-700 mb-1">Product Category</label><select id="productCategory" name="productCategory" class="form-select w-full"><option value="">-- Select Category --</option></select></div>
+                        <div><label for="material" class="block text-sm font-medium text-gray-700 mb-1">Material (optional)</label><input type="text" id="material" name="material" class="form-input w-full" placeholder="e.g., Wrought Aluminium Alloy"></div>
+                        <div><label for="manufacturingProcess" class="block text-sm font-medium text-gray-700 mb-1">Manufacturing Process (optional)</label><input type="text" id="manufacturingProcess" name="manufacturingProcess" class="form-input w-full" placeholder="e.g., Extrusion Shaping"></div>
+                        <div><label for="countryOfOrigin" class="block text-sm font-medium text-gray-700 mb-1">Country of Origin (optional)</label><select id="countryOfOrigin" name="countryOfOrigin" class="form-select w-full"><option value="">-- Select Country (Defaults to Global) --</option></select></div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div><label for="quantity" class="block text-sm font-medium text-gray-700 mb-1">Quantity / Amount</label><input type="number" id="quantity" name="quantity" class="form-input w-full" placeholder="e.g., 1000" step="any" required></div>
+                            <div><label for="quantityUnit" class="block text-sm font-medium text-gray-700 mb-1">Unit for Quantity/Amount</label><select id="quantityUnit" name="quantityUnit" class="form-select w-full" required><option value="kg">kg (Weight)</option><option value="tonne">tonne (Weight)</option><option value="EUR">EUR (Spend)</option><option value="USD">USD (Spend)</option></select></div>
+                        </div>
+                        <div class="optional-section-container">
+                            <fieldset><legend class="text-md font-semibold text-gray-700 mb-2">Supplier-Specific Data?</legend><div class="flex items-center space-x-4 mb-3"><div><input type="radio" id="supplierDataYes" name="hasSupplierData" value="yes" class="form-radio text-blue-600 focus:ring-blue-500"><label for="supplierDataYes" class="ml-2 text-sm font-medium text-gray-700">Yes</label></div><div><input type="radio" id="supplierDataNo" name="hasSupplierData" value="no" class="form-radio text-blue-600 focus:ring-blue-500" checked><label for="supplierDataNo" class="ml-2 text-sm font-medium text-gray-700">No</label></div></div></fieldset>
+                            <div id="supplierPcfDetailsSection" class="hidden mt-3 space-y-4"> <p class="text-xs text-gray-500">If you have a PCF from your supplier, enter it here to override database lookup.</p><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label for="supplierPcfValue" class="block text-sm font-medium text-gray-700 mb-1">Supplier PCF Value</label><input type="number" id="supplierPcfValue" name="supplierPcfValue" class="form-input w-full" placeholder="e.g., 15.5" step="any"></div><div><label for="supplierPcfUnit" class="block text-sm font-medium text-gray-700 mb-1">Supplier PCF Unit</label><select id="supplierPcfUnit" name="supplierPcfUnit" class="form-select w-full"><option value="">-- Select Unit --</option><option value="kgCO2e/kg">kgCO₂e/kg</option><option value="kgCO2e/tonne">kgCO₂e/tonne</option><option value="kgCO2e/EUR">kgCO₂e/EUR</option><option value="kgCO2e/USD">kgCO₂e/USD</option></select></div></div></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-full">Calculate Emissions</button>
+                    </form>
+                    <div id="results" class="mt-8 p-6 bg-gray-50 rounded-lg shadow hidden">
+                        <h2 class="text-xl font-semibold text-gray-700 mb-4">Calculation Results</h2><div id="calculationMethod" class="text-sm text-blue-700 italic mb-3"></div><div id="noFactorFound" class="text-red-600 mb-4 hidden"></div>
+                        <div id="factorDetails" class="space-y-2 mb-4"><p><strong>Emission Factor Used:</strong> <span id="matchedFactorDescription" class="text-gray-600"></span><span id="infoIconContainer"></span></p><p><strong>Factor Value:</strong> <span id="matchedFactorValue" class="text-gray-600"></span> <span id="matchedFactorUnitText" class="text-gray-600"></span></p><p><strong>Source / Origin:</strong> <span id="matchedFactorSource" class="text-gray-600"></span></p></div>
+                        <div class="text-2xl font-bold text-blue-600">Total Emissions: <span id="totalEmissions"></span> t CO₂e</div>
+                    </div>
+                    <div id="databaseTableContainer" class="mt-8"> <div class="bg-white p-6 sm:p-8 rounded-lg shadow-xl w-full max-w-4xl mx-auto"> <div class="flex justify-between items-center mb-4"><h2 class="text-xl sm:text-2xl font-semibold text-gray-800">Emission Factor Database (Simplified)</h2><button id="expandTableButton" class="btn btn-secondary btn-sm py-1 px-3">Expand Table</button></div><div id="tableWrapper" class="results-table-container overflow-x-auto max-h-96"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Year</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Process</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Country</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Factor</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th></tr></thead><tbody id="emissionFactorsTableBody" class="bg-white divide-y divide-gray-200"></tbody></table></div></div></div>
+                </div> 
+                <div id="documentationContent" class="tab-content hidden documentation-section">
+                    <h3>Methodology Documentation</h3><p>This calculator estimates Scope 3, Category 1 (Purchased Goods and Services) emissions based on user inputs and a simplified, predefined emission factor database.</p><h3>1. Input Data</h3><p>The user provides the following information:</p><ul><li><strong>Reporting Year:</strong> The year for which the emissions are being calculated. This influences which year-specific factors are prioritized.</li><li><strong>Product Category:</strong> The general category of the purchased good/service (e.g., "Aluminium products").</li><li><strong>Material (optional):</strong> Specific material information (e.g., "Wrought Aluminium Alloy").</li><li><strong>Manufacturing Process (optional):</strong> Specific manufacturing process (e.g., "Extrusion Shaping").</li><li><strong>Country of Origin (optional):</strong> The country where the good was produced or service rendered. Defaults to "Global" if unspecified.</li><li><strong>Quantity / Amount:</strong> The amount of the purchased good/service.</li><li><strong>Unit for Quantity/Amount:</strong> The unit for the quantity, which determines if a weight-based (kg, tonne) or spend-based (EUR, USD) calculation is performed.</li><li><strong>Supplier-Specific Data (Optional):</strong><ul><li>Indication if supplier-specific Product Carbon Footprint (PCF) data is available (Yes/No).</li><li>If Yes: Supplier PCF Value and its Unit (e.g., kgCO₂e/kg, kgCO₂e/EUR).</li></ul></li></ul>
+                    <h3>2. Emission Factor Determination Logic</h3>
+                    <p>The system prioritizes emission factors in the following order:</p>
+                    <ol>
+                        <li><strong>Supplier-Specific PCF:</strong><p>If the user selects "Yes" for supplier-specific data and provides a valid PCF value and unit:</p><ul><li>This PCF value is used directly.</li><li>The unit of the supplier PCF must align with the "Unit for Quantity/Amount" (i.e., both weight-based or both spend-based).</li><li>If the supplier PCF is in `kgCO₂e/tonne`, it's converted to `kgCO₂e/kg` for internal consistency before calculation.</li><li>Database lookup is skipped.</li></ul></li>
+                        <li><strong>Database Lookup (if no valid supplier PCF):</strong><p>If supplier data is not used, the system searches its internal `emissionFactorsDB`.</p>
+                            <ul>
+                                <li><strong>Initial Filtering:</strong> Candidates are first filtered by:<ul><li>Matching the user-selected "Product Category".</li><li>Matching the type of "Unit for Quantity/Amount" (i.e., weight-based factors like `kgCO₂e/kg` or spend-based factors like `kgCO₂e/EUR`).</li></ul></li>
+                                <li><strong>Fallback Category:</strong> If no factors are found for the specific category, the system attempts to find factors under a "Default Fallback" category for the required unit type.</li>
+                                <li><strong>Scoring Mechanism:</strong> Remaining candidates are scored to find the best match. Higher scores are better. The scoring considers:
+                                    <ul>
+                                        <li><strong>Reporting Year Match:</strong> Factors are prioritized based on their applicability to the reporting year.
+                                            <ol style="list-style-type: lower-alpha; margin-left: 1rem;">
+                                                <li><em>Exact Match:</em> Factors for the exact reporting year are preferred most (highest score contribution).</li>
+                                                <li><em>Most Recent Past Year:</em> If no exact match, the most recent factor from a past year is chosen. The closer this past year is to the reporting year, the better.</li>
+                                                <li><em>Generic Year:</em> If no exact or relevant past year factor, a generic factor (not tied to a specific year, i.e., `year` is `null` in the database) is used.</li>
+                                                <li><em>Closest Future Year:</em> As a last resort (before broader fallbacks), the closest future year's factor may be selected if no other year criteria are met. This is scored lower than past or generic years.</li>
+                                            </ol>
+                                        </li>
+                                        <li><strong>Material Match:</strong> Matches the optional "Material" input (e.g., +50 for exact, +10 if both generic, penalties/minor points for partials).</li>
+                                        <li><strong>Process Match:</strong> Matches the optional "Manufacturing Process" input (e.g., +30 for exact, +5 if both generic, penalties/minor points for partials).</li>
+                                        <li><strong>Country Match:</strong> Matches the optional "Country of Origin" (e.g., +20 for exact, +10 if factor is Global and user specified country).</li>
+                                        <li><strong>Specificity Penalty:</strong> Ensures specific factors are preferred over generic fallbacks when possible (e.g., -1000 for "Default Fallback" if category-specific factors were available).</li>
+                                    </ul>
+                                </li>
+                                <li>The candidate with the highest score is selected. The logic trace for this selection can be viewed by clicking the (i) icon in the results.</li>
+                            </ul>
+                        </li>
+                    </ol>
+                    <h3>3. Emission Calculation</h3><p>The core calculation is:</p><p><code>Total Emissions (kg CO₂e) = Effective Quantity × Emission Factor Value (in kgCO₂e per unit of Effective Quantity)</code></p><ul><li><strong>Effective Quantity:</strong><ul><li>If "Unit for Quantity/Amount" is "kg" or "EUR" or "USD", Effective Quantity = User Input Quantity.</li><li>If "Unit for Quantity/Amount" is "tonne", Effective Quantity = User Input Quantity × 1000 (to convert to kg for consistency with kg-based factors).</li></ul></li><li><strong>Emission Factor Value:</strong><ul><li>This is the `factor` value from the selected database entry or the (potentially converted) supplier-provided PCF.</li><li>All weight-based factors in the database or from suppliers (if per tonne) are effectively treated as `kgCO₂e/kg` for calculation. Spend-based factors are `kgCO₂e/EUR` (USD is treated as EUR for this MVP).</li></ul></li></ul><h3>4. Final Output Conversion</h3><p>The calculated "Total Emissions (kg CO₂e)" are then converted to tonnes for display:</p><p><code>Displayed Emissions (t CO₂e) = Total Emissions (kg CO₂e) / 1000</code></p><p>Numbers in the results (factor value, total emissions) are formatted with a space as a thousands separator and 2 decimal places for the final emissions (factors may show more precision).</p><h3>5. Emission Factor Database (`emissionFactorsDB`)</h3><p>This is a simplified internal JavaScript array containing objects, each representing an emission factor. Key fields include:</p><ul><li><code>id</code>: Unique identifier.</li><li><code>year</code>: Applicable year (e.g., 2023) or <code>null</code> if generic.</li><li><code>category</code>: Product/service category.</li><li><code>material</code>: Specific material (can be <code>null</code>).</li><li><code>process</code>: Specific process (can be <code>null</code>).</li><li><code>country</code>: Specific country or "Global" (can be <code>null</code>, implying Global).</li><li><code>factor</code>: The numerical emission factor value.</li><li><code>unit</code>: The unit of the factor (e.g., "kgCO2e/kg", "kgCO2e/EUR").</li><li><code>source</code>: The source of the emission factor data (e.g., "EcoInvent 3.9.1_Sim_DE_23").</li></ul><p>The database includes specific factors, more generic ones (where material, process, or country might be null/Global), and "Default Fallback" factors for cases where no primary matches are found.</p>
+                </div> 
+            </div> 
+        </section>
+        <footer class="footer"> Developed by Anvar Darbayev </footer>
+    </div> 
+
+    <div id="fullscreenTableModal" class="fullscreen-table-modal hidden"><div class="modal-table-content"><div class="close-btn-container"><button id="closeFullscreenTableButton" class="btn btn-primary py-1 px-3">&times; Close</button></div><div id="fullscreenTableWrapper" class="results-table-container overflow-y-auto overflow-x-auto"></div></div></div>
+    <div id="factorLogicModal" class="modal-overlay"><div class="modal-content"><div class="flex justify-between items-center mb-4"><h3 class="text-lg font-semibold text-gray-800">Emission Factor Selection Logic</h3><button id="closeModalButton" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button></div><div id="factorLogicContent" class="text-sm text-gray-700 space-y-2"></div></div></div>
+    
+    <script>
+        const emissionFactorsDB = [ 
+            // Aluminium products
+            { id: 101, year: 2023, category: 'Aluminium products', material: 'Wrought Aluminium Alloy', process: 'Extrusion Shaping', country: 'Germany', factor: 18.5, unit: 'kgCO2e/kg', source: 'EcoInvent 3.9.1_Sim_DE_Alu1_P1_23' },
+            { id: 102, year: 2023, category: 'Aluminium products', material: 'Wrought Aluminium Alloy', process: 'Extrusion Shaping', country: 'China', factor: 31, unit: 'kgCO2e/kg', source: 'EcoInvent 3.9.1_Sim_CN_Alu1_P1_23' },
+            { id: 103, year: 2022, category: 'Aluminium products', material: 'Wrought Aluminium Alloy', process: 'High-Pressure Die Casting', country: 'Germany', factor: 20, unit: 'kgCO2e/kg', source: 'EcoInvent 3.9.1_Sim_DE_Alu1_P2_22' },
+            { id: 104, year: 2023, category: 'Aluminium products', material: 'Wrought Aluminium Alloy', process: 'High-Pressure Die Casting', country: 'China', factor: 33, unit: 'kgCO2e/kg', source: 'EcoInvent 3.9.1_Sim_CN_Alu1_P2_23' },
+            { id: 105, year: 2023, category: 'Aluminium products', material: 'Cast Aluminium Alloy', process: 'Extrusion Shaping', country: 'Germany', factor: 22, unit: 'kgCO2e/kg', source: 'EcoInvent 3.9.1_Sim_DE_Alu2_P1_23' },
+            { id: 106, year: 2021, category: 'Aluminium products', material: 'Cast Aluminium Alloy', process: 'Extrusion Shaping', country: 'China', factor: 36, unit: 'kgCO2e/kg', source: 'EcoInvent 3.9.1_Sim_CN_Alu2_P1_21' },
+            { id: 109, year: null, category: 'Aluminium products', material: null, process: null, country: 'Global', factor: 25, unit: 'kgCO2e/kg', source: 'EcoInvent 3.9.1_Generic_Alu_Weight_GLO' },
+            { id: 110, year: null, category: 'Aluminium products', material: null, process: null, country: 'Global', factor: 0.9, unit: 'kgCO2e/EUR', source: 'EcoInvent 3.9.1_Generic_Alu_Spend_GLO' },
+
+            // Steel products
+            { id: 201, year: 2023, category: 'Steel products', material: 'Carbon Steel Grade A', process: 'Hot Rolling', country: 'Germany', factor: 2.5, unit: 'kgCO2e/kg', source: 'EcoInvent 3.9.1_Sim_DE_Steel1_P1_23' },
+            { id: 202, year: 2022, category: 'Steel products', material: 'Carbon Steel Grade A', process: 'Hot Rolling', country: 'China', factor: 3.8, unit: 'kgCO2e/kg', source: 'EcoInvent 3.9.1_Sim_CN_Steel1_P1_22' },
+            { id: 203, year: 2023, category: 'Steel products', material: 'Carbon Steel Grade A', process: 'Investment Casting', country: 'Germany', factor: 4.0, unit: 'kgCO2e/kg', source: 'EcoInvent 3.9.1_Sim_DE_Steel1_P2_23' },
+            { id: 209, year: null, category: 'Steel products', material: null, process: null, country: 'Global', factor: 4.2, unit: 'kgCO2e/kg', source: 'EcoInvent 3.9.1_Generic_Steel_Weight_GLO' },
+            { id: 210, year: null, category: 'Steel products', material: null, process: null, country: 'Global', factor: 0.7, unit: 'kgCO2e/EUR', source: 'EcoInvent 3.9.1_Generic_Steel_Spend_GLO' },
+            
+            // Copper products
+            { id: 301, year: 2023, category: 'Copper products', material: 'Electrolytic Tough Pitch Copper', process: 'Wire Drawing', country: 'Germany', factor: 6.0, unit: 'kgCO2e/kg', source: 'EcoInvent 3.9.1_Sim_DE_Copper1_P1_23' },
+            { id: 302, year: 2023, category: 'Copper products', material: 'Electrolytic Tough Pitch Copper', process: 'Wire Drawing', country: 'China', factor: 8.0, unit: 'kgCO2e/kg', source: 'EcoInvent 3.9.1_Sim_CN_Copper1_P1_23' },
+            { id: 309, year: null, category: 'Copper products', material: null, process: null, country: 'Global', factor: 7.0, unit: 'kgCO2e/kg', source: 'EcoInvent 3.9.1_Generic_Copper_Weight_GLO' },
+            { id: 310, year: null, category: 'Copper products', material: null, process: null, country: 'Global', factor: 1.2, unit: 'kgCO2e/EUR', source: 'EcoInvent 3.9.1_Generic_Copper_Spend_GLO' },
+
+            // Glass products
+            { id: 401, year: 2022, category: 'Glass products', material: 'Soda-Lime Glass', process: 'Float Glass Process', country: 'Germany', factor: 1.5, unit: 'kgCO2e/kg', source: 'EcoInvent 3.9.1_Sim_DE_Glass1_P1_22' },
+            { id: 409, year: null, category: 'Glass products', material: null, process: null, country: 'Global', factor: 2.0, unit: 'kgCO2e/kg', source: 'EcoInvent 3.9.1_Generic_Glass_Weight_GLO' },
+            { id: 410, year: null, category: 'Glass products', material: null, process: null, country: 'Global', factor: 0.5, unit: 'kgCO2e/EUR', source: 'EcoInvent 3.9.1_Generic_Glass_Spend_GLO' },
+
+            // Rubber products
+            { id: 501, year: 2023, category: 'Rubber products', material: 'Natural Rubber (NR)', process: 'Injection Moulding', country: 'Germany', factor: 3.5, unit: 'kgCO2e/kg', source: 'EcoInvent 3.9.1_Sim_DE_Rubber1_P1_23' },
+            { id: 509, year: null, category: 'Rubber products', material: null, process: null, country: 'Global', factor: 4.5, unit: 'kgCO2e/kg', source: 'EcoInvent 3.9.1_Generic_Rubber_Weight_GLO' },
+            { id: 510, year: null, category: 'Rubber products', material: null, process: null, country: 'Global', factor: 0.8, unit: 'kgCO2e/EUR', source: 'EcoInvent 3.9.1_Generic_Rubber_Spend_GLO' },
+
+            // Plastic products
+            { id: 601, year: 2023, category: 'Plastic products', material: 'Polyethylene Terephthalate (PET)', process: 'Blow Moulding', country: 'Germany', factor: 2.8, unit: 'kgCO2e/kg', source: 'EcoInvent 3.9.1_Sim_DE_Plastic1_P1_23' },
+            { id: 609, year: null, category: 'Plastic products', material: null, process: null, country: 'Global', factor: 3.5, unit: 'kgCO2e/kg', source: 'EcoInvent 3.9.1_Generic_Plastic_Weight_GLO' },
+            { id: 610, year: null, category: 'Plastic products', material: null, process: null, country: 'Global', factor: 0.6, unit: 'kgCO2e/EUR', source: 'EcoInvent 3.9.1_Generic_Plastic_Spend_GLO' },
+            
+            { id: 1000, year: null, category: 'Default Fallback', material: null, process: null, country: 'Global', factor: 0.5, unit: 'kgCO2e/EUR', source: 'Generic_Spend_Fallback_GenericYr' },
+            { id: 1001, year: null, category: 'Default Fallback', material: null, process: null, country: 'Global', factor: 10, unit: 'kgCO2e/kg', source: 'Generic_Weight_Fallback_GenericYr' }
+        ];
+        const landingPageSection = document.getElementById('landingPageSection');
+        const appSection = document.getElementById('appSection');
+        const tryToolButton = document.getElementById('tryToolButton');
+        const form = document.getElementById('emissionForm');
+        const resultsDiv = document.getElementById('results');
+        const calculationMethodSpan = document.getElementById('calculationMethod');
+        const noFactorFoundDiv = document.getElementById('noFactorFound');
+        const factorDetailsDiv = document.getElementById('factorDetails');
+        const matchedFactorDescriptionSpan = document.getElementById('matchedFactorDescription');
+        const matchedFactorValueSpan = document.getElementById('matchedFactorValue');
+        const matchedFactorUnitTextSpan = document.getElementById('matchedFactorUnitText');
+        const matchedFactorSourceSpan = document.getElementById('matchedFactorSource');
+        const totalEmissionsSpan = document.getElementById('totalEmissions');
+        const infoIconContainer = document.getElementById('infoIconContainer');
+        const productCategorySelect = document.getElementById('productCategory');
+        const countryOfOriginSelect = document.getElementById('countryOfOrigin');
+        const emissionFactorsTableBody = document.getElementById('emissionFactorsTableBody'); 
+        const messageBox = document.getElementById('messageBox');
+        const factorLogicModal = document.getElementById('factorLogicModal');
+        const closeModalButton = document.getElementById('closeModalButton');
+        const factorLogicContent = document.getElementById('factorLogicContent');
+        const reportingYearInput = document.getElementById('reportingYear');
+        const supplierDataYesRadio = document.getElementById('supplierDataYes');
+        const supplierDataNoRadio = document.getElementById('supplierDataNo');
+        const supplierPcfDetailsSection = document.getElementById('supplierPcfDetailsSection');
+        const supplierPcfValueInput = document.getElementById('supplierPcfValue');
+        const supplierPcfUnitSelect = document.getElementById('supplierPcfUnit');
+        const tabCalculatorBtn = document.getElementById('tabCalculator');
+        const tabDocumentationBtn = document.getElementById('tabDocumentation');
+        const calculatorContentDiv = document.getElementById('calculatorContent');
+        const documentationContentDiv = document.getElementById('documentationContent');
+        const databaseTableContainer = document.getElementById('databaseTableContainer'); 
+        const expandTableButton = document.getElementById('expandTableButton');
+        const fullscreenTableModal = document.getElementById('fullscreenTableModal');
+        const fullscreenTableWrapper = document.getElementById('fullscreenTableWrapper');
+        const closeFullscreenTableButton = document.getElementById('closeFullscreenTableButton');
+        const mainTableWrapper = document.getElementById('tableWrapper'); 
+
+        let currentFactorLogic = ""; 
+
+        function formatNumber(num, decimalPlaces = 2) {
+            if (isNaN(parseFloat(num))) return num; 
+            const fixedNum = parseFloat(num).toFixed(decimalPlaces);
+            const parts = fixedNum.split('.');
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' '); 
+            return parts.join('.');
+        }
+
+        tryToolButton.addEventListener('click', () => {
+            landingPageSection.classList.add('hidden-transition');
+            setTimeout(() => {
+                landingPageSection.classList.add('hidden'); 
+                appSection.classList.remove('hidden');
+                void appSection.offsetWidth; 
+                appSection.classList.add('visible');
+                appSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 700); 
+        });
+
+        function showTab(tabName) { 
+            if (tabName === 'calculator') {
+                calculatorContentDiv.classList.remove('hidden');
+                documentationContentDiv.classList.add('hidden');
+                tabCalculatorBtn.classList.add('active');
+                tabDocumentationBtn.classList.remove('active');
+            } else if (tabName === 'documentation') {
+                calculatorContentDiv.classList.add('hidden');
+                documentationContentDiv.classList.remove('hidden');
+                tabCalculatorBtn.classList.remove('active');
+                tabDocumentationBtn.classList.add('active');
+            }
+        }
+        function populateDropdowns() { 
+            productCategorySelect.innerHTML = '<option value="">-- Select Category --</option>'; 
+            const categories = [...new Set(emissionFactorsDB.map(f => f.category))].sort();
+            categories.forEach(cat => {
+                if (cat !== 'Default Fallback') {
+                    const option = document.createElement('option');
+                    option.value = cat; option.textContent = cat;
+                    productCategorySelect.appendChild(option);
+                }
+            });
+            countryOfOriginSelect.innerHTML = '<option value="">-- Select Country (Defaults to Global) --</option>'; 
+            const countries = [...new Set(emissionFactorsDB.map(f => f.country).filter(c => c && c !== 'Global'))].sort();
+             countries.forEach(country => {
+                const option = document.createElement('option');
+                option.value = country; option.textContent = country;
+                countryOfOriginSelect.appendChild(option);
+            });
+        }
+        function displayEmissionFactors(tableBodyElement) {
+            tableBodyElement.innerHTML = ''; 
+            emissionFactorsDB.forEach(factor => {
+                const row = tableBodyElement.insertRow();
+                row.innerHTML = `
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">${factor.id}</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">${factor.year ?? 'Any'}</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${factor.category}</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">${factor.material ?? 'N/A'}</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">${factor.process ?? 'N/A'}</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">${factor.country ?? 'Global'}</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">${formatNumber(factor.factor, 4)}</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">${factor.unit}</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">${factor.source}</td>
+                `;
+            });
+         }
+        function showMessage(message, type = 'success') { 
+            messageBox.textContent = message;
+            messageBox.className = `message-box ${type} show`;
+            setTimeout(() => { messageBox.classList.remove('show'); }, 3000);
+        }
+        function openModal() { 
+            factorLogicContent.innerHTML = currentFactorLogic.replace(/\n/g, '<br>');
+            factorLogicModal.classList.add('show');
+        }
+        function closeModal() { 
+             factorLogicModal.classList.remove('show'); 
+        }
+        closeModalButton.addEventListener('click', closeModal);
+        factorLogicModal.addEventListener('click', (event) => { 
+            if (event.target === factorLogicModal) closeModal();
+        });
+        function toggleSupplierPcfDetails() { 
+            if (supplierDataYesRadio.checked) {
+                supplierPcfDetailsSection.classList.remove('hidden');
+            } else {
+                supplierPcfDetailsSection.classList.add('hidden');
+            }
+        }
+        supplierDataYesRadio.addEventListener('change', toggleSupplierPcfDetails);
+        supplierDataNoRadio.addEventListener('change', toggleSupplierPcfDetails);
+        expandTableButton.addEventListener('click', () => { 
+            const clonedTable = mainTableWrapper.querySelector('table').cloneNode(true);
+            fullscreenTableWrapper.innerHTML = ''; 
+            fullscreenTableWrapper.appendChild(clonedTable);
+            fullscreenTableModal.classList.remove('hidden');
+            setTimeout(() => fullscreenTableModal.classList.add('active'), 10); 
+            document.body.style.overflow = 'hidden'; 
+        });
+        closeFullscreenTableButton.addEventListener('click', () => { 
+            fullscreenTableModal.classList.remove('active');
+            setTimeout(() => fullscreenTableModal.classList.add('hidden'), 300); 
+            document.body.style.overflow = ''; 
+        });
+
+        function findEmissionFactor(reportingYear, category, material, process, country, quantityUnitType) {
+            const targetUnitSubstring = quantityUnitType === 'weight' ? 'kgCO2e/kg' : 'kgCO2e/EUR';
+            const searchMaterial = material?.trim().toLowerCase() || null;
+            const searchProcess = process?.trim().toLowerCase() || null;
+            const searchCountry = country?.trim() || 'Global';
+            let logicTrace = [`Reporting Year: ${reportingYear}. Targeting factors for category: '${category}', unit type: '${quantityUnitType}'.`];
+
+            let candidates = emissionFactorsDB.filter(f => 
+                f.category === category &&
+                (f.unit.includes(targetUnitSubstring) || (quantityUnitType === 'spend' && (f.unit.includes('kgCO2e/USD') || f.unit.includes('kgCO2e/EUR'))))
+            );
+            logicTrace.push(`Found ${candidates.length} initial candidates for category '${category}' and unit type '${quantityUnitType}'.`);
+
+            let usedFallbackCategory = false;
+            if (!candidates.length) {
+                logicTrace.push(`No specific category factors. Trying 'Default Fallback' for unit type '${quantityUnitType}'.`);
+                candidates = emissionFactorsDB.filter(f =>
+                    f.category === 'Default Fallback' &&
+                    (f.unit.includes(targetUnitSubstring) || (quantityUnitType === 'spend' && (f.unit.includes('kgCO2e/USD') || f.unit.includes('kgCO2e/EUR'))))
+                );
+                logicTrace.push(`Found ${candidates.length} 'Default Fallback' candidates.`);
+                if (candidates.length > 0) usedFallbackCategory = true;
+            }
+            
+            if (!candidates.length) {
+                logicTrace.push("No suitable factors found even in fallback.");
+                return { factor: null, logic: logicTrace.join('\n') };
+            }
+
+            logicTrace.push("\nScoring candidates based on year and other specifics:");
+            const scoredCandidates = candidates.map(factor => {
+                let score = 0; // Base score for category and unit type match already applied by filtering
+                const factorMaterial = factor.material?.toLowerCase() ?? null;
+                const factorProcess = factor.process?.toLowerCase() ?? null;
+                const factorCountry = factor.country ?? 'Global';
+
+                // Year scoring (refined "most recent" logic)
+                if (factor.year === reportingYear) { // Exact match
+                    score += 100;
+                } else if (factor.year && factor.year < reportingYear) { // Past year
+                    // Higher score for more recent past years. Max 80. Diminishes by 5 for each year older.
+                    score += Math.max(20, 80 - (reportingYear - factor.year) * 5); 
+                } else if (factor.year === null) { // Generic year
+                    score += 60;
+                } else if (factor.year && factor.year > reportingYear) { // Future year
+                    // Lower score for future years. Max 40. Diminishes by 5 for each year further.
+                    score += Math.max(10, 40 - (factor.year - reportingYear) * 5);
+                }
+
+                // Other criteria scoring
+                if (searchMaterial && factorMaterial === searchMaterial) { score += 50; }
+                else if (!searchMaterial && !factorMaterial) { score += 10; }
+                else if (searchMaterial && !factorMaterial) { score -=5; }
+                
+                if (searchProcess && factorProcess === searchProcess) { score += 30; }
+                else if (!searchProcess && !factorProcess) { score += 5; }
+                else if (searchProcess && !factorProcess) { score -=3; }
+
+                if (factorCountry === searchCountry) { score += 20; }
+                else if (factorCountry === 'Global' && searchCountry !== 'Global') { score +=10; }
+                else if (factorCountry !== 'Global' && searchCountry === 'Global') { score +=5;}
+
+                if (factor.category === 'Default Fallback' && !usedFallbackCategory) { score -= 1000; }
+                
+                logicTrace.push(`  Candidate ID ${factor.id} (Year: ${factor.year ?? 'Any'}, Cat: '${factor.category}', Mat: '${factorMaterial || 'N/A'}', Proc: '${factorProcess || 'N/A'}', Country: '${factorCountry}'): Final Score: ${score}`);
+                return { ...factor, score };
+            });
+
+            scoredCandidates.sort((a, b) => b.score - a.score);
+            const bestMatch = scoredCandidates.length > 0 ? scoredCandidates[0] : null;
+            
+            if (bestMatch) {
+                logicTrace.push(`\nSelected factor ID ${bestMatch.id} (Score: ${bestMatch.score}) from DB.`);
+            } else {
+                logicTrace.push("\nNo candidate from DB scored high enough or matched criteria after detailed scoring.");
+            }
+            return { factor: bestMatch, logic: logicTrace.join('\n') };
+         }
+
+        form.addEventListener('submit', function(event) { 
+            event.preventDefault();
+            resultsDiv.classList.add('hidden'); noFactorFoundDiv.classList.add('hidden'); factorDetailsDiv.classList.add('hidden');
+            infoIconContainer.innerHTML = ''; calculationMethodSpan.textContent = '';
+            const formData = new FormData(form);
+            const reportingYear = parseInt(formData.get('reportingYear')) || new Date().getFullYear();
+            const category = formData.get('productCategory');
+            const material = formData.get('material'); const process = formData.get('manufacturingProcess');
+            const country = formData.get('countryOfOrigin'); const quantity = parseFloat(formData.get('quantity'));
+            const quantityUnit = formData.get('quantityUnit'); const hasSupplierData = formData.get('hasSupplierData') === 'yes';
+            let supplierPcfValue = NaN; let supplierPcfUnit = '';
+            if (hasSupplierData) {
+                supplierPcfValue = parseFloat(formData.get('supplierPcfValue'));
+                supplierPcfUnit = formData.get('supplierPcfUnit');
+            }
+            if (!category && !hasSupplierData) { showMessage('Please select a product category or indicate use of supplier PCF.', 'error'); return; }
+            if (hasSupplierData && (isNaN(supplierPcfValue) || !supplierPcfUnit)) { showMessage('Please provide both value and unit for supplier PCF.', 'error'); return; }
+            if (isNaN(quantity) || quantity <= 0) { showMessage('Please enter a valid quantity.', 'error'); return; }
+            let effectiveQuantity = quantity;
+            let quantityUnitType = (quantityUnit === 'kg' || quantityUnit === 'tonne') ? 'weight' : 'spend';
+            if (quantityUnit === 'tonne') effectiveQuantity = quantity * 1000; 
+            let finalFactorValue; let finalFactorUnit; let finalFactorSource = "Database Lookup"; let finalMatchedFactorDescription = "N/A";
+            if (hasSupplierData && !isNaN(supplierPcfValue) && supplierPcfValue > 0 && supplierPcfUnit) {
+                finalFactorValue = supplierPcfValue; finalFactorUnit = supplierPcfUnit; 
+                finalFactorSource = "Supplier-Specific Data"; finalMatchedFactorDescription = "Directly from supplier input";
+                calculationMethodSpan.textContent = "Calculation based on Supplier-Specific PCF.";
+                currentFactorLogic = `Using supplier-specific PCF: ${formatNumber(supplierPcfValue,4)} ${supplierPcfUnit}. Quantity: ${formatNumber(quantity)} ${quantityUnit}.`;
+                const supplierPcfUnitType = (supplierPcfUnit.endsWith('/kg') || supplierPcfUnit.endsWith('/tonne')) ? 'weight' : 'spend';
+                if (supplierPcfUnitType !== quantityUnitType) {
+                    showMessage('Supplier PCF unit type (weight/spend) must match quantity unit type.', 'error');
+                    noFactorFoundDiv.textContent = `Error: Supplier PCF unit (${supplierPcfUnit}) is ${supplierPcfUnitType}-based, but quantity unit (${quantityUnit}) is ${quantityUnitType}-based.`;
+                    noFactorFoundDiv.classList.remove('hidden'); resultsDiv.classList.remove('hidden'); return;
+                }
+                if (supplierPcfUnit === 'kgCO2e/tonne') {
+                    finalFactorValue = supplierPcfValue / 1000; finalFactorUnit = 'kgCO2e/kg (converted from /tonne)';
+                }
+            } else {
+                if (!category) { showMessage('Please select a product category if not using supplier data.', 'error'); return; }
+                calculationMethodSpan.textContent = "Calculation based on Database Lookup.";
+                const { factor: matchedFactor, logic: matchLogic } = findEmissionFactor(reportingYear, category, material, process, country, quantityUnitType);
+                currentFactorLogic = matchLogic;
+                if (matchedFactor) {
+                    finalMatchedFactorDescription = `${matchedFactor.category} ${matchedFactor.material ? `- ${matchedFactor.material}` : ''} ${matchedFactor.process ? `- ${matchedFactor.process}` : ''} (${matchedFactor.country ?? 'Global'}, Year: ${matchedFactor.year ?? 'Any'})`;
+                    finalFactorValue = matchedFactor.factor; finalFactorUnit = matchedFactor.unit; finalFactorSource = matchedFactor.source;
+                    const infoIcon = document.createElement('span');
+                    infoIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 inline-block info-icon"><path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a1 1 0 0 0 0 2v3a1 1 0 0 0 1 1h1a1 1 0 1 0 0-2v-3a1 1 0 0 0-1-1H9Z" clip-rule="evenodd" /></svg>`;
+                    infoIcon.title = "Show selection logic"; infoIcon.onclick = openModal; infoIconContainer.appendChild(infoIcon);
+                } else {
+                    noFactorFoundDiv.innerHTML = `No suitable emission factor found in database.<br><br><strong>Selection attempt logic:</strong><br>${matchLogic.replace(/\n/g, '<br>')}`;
+                    noFactorFoundDiv.classList.remove('hidden'); resultsDiv.classList.remove('hidden');
+                    showMessage('No suitable emission factor found in DB.', 'error'); return;
+                }
+            }
+            let calculatedEmissionsKg; 
+            const factorUnitType = (finalFactorUnit.includes('/kg') || finalFactorUnit.includes('/tonne')) ? 'weight' : 'spend';
+            if (factorUnitType === quantityUnitType) {
+                calculatedEmissionsKg = effectiveQuantity * finalFactorValue;
+                matchedFactorDescriptionSpan.textContent = finalMatchedFactorDescription;
+                matchedFactorValueSpan.textContent = formatNumber(finalFactorValue, 4); 
+                matchedFactorUnitTextSpan.textContent = finalFactorUnit; 
+                matchedFactorSourceSpan.textContent = finalFactorSource;
+                const calculatedEmissionsTonnes = calculatedEmissionsKg / 1000; 
+                totalEmissionsSpan.textContent = formatNumber(calculatedEmissionsTonnes, 2); 
+                factorDetailsDiv.classList.remove('hidden'); resultsDiv.classList.remove('hidden');
+                showMessage('Emissions calculated successfully!', 'success');
+            } else {
+                noFactorFoundDiv.textContent = `Critical Error: Mismatch between final factor unit type ('${factorUnitType}') and quantity unit type ('${quantityUnitType}'). Cannot calculate. Logic: ${currentFactorLogic.replace(/\n/g, '<br>')}`;
+                noFactorFoundDiv.classList.remove('hidden'); resultsDiv.classList.remove('hidden'); 
+                factorDetailsDiv.classList.add('hidden'); 
+                showMessage('Factor and quantity unit mismatch.', 'error');
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            populateDropdowns();
+            displayEmissionFactors(emissionFactorsTableBody); 
+            reportingYearInput.value = new Date().getFullYear(); 
+            toggleSupplierPcfDetails(); 
+            showTab('calculator'); 
+            appSection.classList.add('hidden');
+            appSection.classList.remove('visible');
+            landingPageSection.classList.remove('hidden', 'hidden-transition');
+        });
+    </script>
+</body>
+</html>
