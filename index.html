@@ -7,6 +7,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+        html {
+            scroll-behavior: smooth; /* Apply smooth scroll to the whole page */
+        }
         body {
             font-family: 'Inter', sans-serif;
             margin: 0;
@@ -29,7 +32,7 @@
             align-items: center;
             justify-content: center;
             text-align: center;
-            min-height: calc(100vh - 50px); /* Adjust for footer height if footer is part of this view directly */
+            min-height: calc(100vh - 50px); 
             padding: 2rem;
             box-sizing: border-box;
             transition: opacity 0.7s ease-out, transform 0.7s ease-out;
@@ -40,8 +43,8 @@
             pointer-events: none; 
         }
         .landing-title {
-            font-size: 2.5rem; /* Tailwind text-4xl */
-            sm:font-size: 3.75rem; /* Tailwind sm:text-6xl */
+            font-size: 2.5rem; 
+            sm:font-size: 3.75rem; 
             font-weight: 800; 
             color: #1E3A8A; 
             margin-bottom: 1rem;
@@ -85,7 +88,7 @@
             sm:padding: 2rem 1rem;
             width: 100%;
             box-sizing: border-box;
-            min-height: calc(100vh - 50px); /* Adjust if footer is separate */
+            min-height: calc(100vh - 50px); 
         }
         #appSection.visible {
             opacity: 1;
@@ -141,7 +144,7 @@
         }
         .info-icon { cursor: pointer; color: #3B82F6; margin-left: 8px; vertical-align: middle; }
         .info-icon:hover { color: #2563EB; }
-        .footer { text-align: center; padding: 1rem; font-size: 0.875rem; color: #6B7280; width: 100%; margin-top:auto; /* Ensures it's at the bottom of flex container */}
+        .footer { text-align: center; padding: 1rem; font-size: 0.875rem; color: #6B7280; width: 100%; margin-top:auto; }
         .optional-section-container { border: 1px dashed #9CA3AF; padding: 1rem; margin-top: 1rem; border-radius: 0.375rem; }
         .hidden { display: none !important; } 
 
@@ -238,16 +241,30 @@
                                 <li><strong>Fallback Category:</strong> If no factors are found for the specific category, the system attempts to find factors under a "Default Fallback" category for the required unit type.</li>
                                 <li><strong>Scoring Mechanism:</strong> Remaining candidates are scored to find the best match. Higher scores are better. The scoring considers:
                                     <ul>
-                                        <li><strong>Reporting Year Match:</strong> Factors are prioritized based on their applicability to the reporting year.
+                                        <li><strong>Reporting Year Match (Most Recent Logic):</strong>
                                             <ol style="list-style-type: lower-alpha; margin-left: 1rem;">
-                                                <li><em>Exact Match:</em> Factors for the exact reporting year are preferred most (highest score contribution).</li>
-                                                <li><em>Most Recent Past Year:</em> If no exact match, the most recent factor from a past year is chosen. The closer this past year is to the reporting year, the better.</li>
-                                                <li><em>Generic Year:</em> If no exact or relevant past year factor, a generic factor (not tied to a specific year, i.e., `year` is `null` in the database) is used.</li>
-                                                <li><em>Closest Future Year:</em> As a last resort (before broader fallbacks), the closest future year's factor may be selected if no other year criteria are met. This is scored lower than past or generic years.</li>
+                                                <li><em>Exact Match (Reporting Year = Factor Year):</em> Highest preference (+100 points).</li>
+                                                <li><em>Most Recent Past Year (Factor Year < Reporting Year):</em> Preferred next. Score decreases the older the factor is relative to the reporting year (e.g., starts at +80, reduces by 5 for each year difference, minimum +20).</li>
+                                                <li><em>Generic Year (Factor Year is `null`):</em> Considered after specific past years (+60 points).</li>
+                                                <li><em>Closest Future Year (Factor Year > Reporting Year):</em> Least preferred among year-specific factors. Score decreases the further in the future the factor is (e.g., starts at +40, reduces by 5 for each year difference, minimum +10).</li>
                                             </ol>
                                         </li>
-                                        <li><strong>Material Match:</strong> Matches the optional "Material" input (e.g., +50 for exact, +10 if both generic, penalties/minor points for partials).</li>
-                                        <li><strong>Process Match:</strong> Matches the optional "Manufacturing Process" input (e.g., +30 for exact, +5 if both generic, penalties/minor points for partials).</li>
+                                        <li><strong>Material Match:</strong> 
+                                            <ul>
+                                                <li>Exact match: +50 points.</li>
+                                                <li>User input generic & Factor generic: +25 points.</li>
+                                                <li>User input specific & Factor generic: +5 points.</li>
+                                                <li>User input generic & Factor specific: -15 points (penalty).</li>
+                                            </ul>
+                                        </li>
+                                        <li><strong>Process Match:</strong> 
+                                            <ul>
+                                                <li>Exact match: +30 points.</li>
+                                                <li>User input generic & Factor generic: +15 points.</li>
+                                                <li>User input specific & Factor generic: +3 points.</li>
+                                                <li>User input generic & Factor specific: -10 points (penalty).</li>
+                                            </ul>
+                                        </li>
                                         <li><strong>Country Match:</strong> Matches the optional "Country of Origin" (e.g., +20 for exact, +10 if factor is Global and user specified country).</li>
                                         <li><strong>Specificity Penalty:</strong> Ensures specific factors are preferred over generic fallbacks when possible (e.g., -1000 for "Default Fallback" if category-specific factors were available).</li>
                                     </ul>
@@ -256,7 +273,7 @@
                             </ul>
                         </li>
                     </ol>
-                    <h3>3. Emission Calculation</h3><p>The core calculation is:</p><p><code>Total Emissions (kg CO₂e) = Effective Quantity × Emission Factor Value (in kgCO₂e per unit of Effective Quantity)</code></p><ul><li><strong>Effective Quantity:</strong><ul><li>If "Unit for Quantity/Amount" is "kg" or "EUR" or "USD", Effective Quantity = User Input Quantity.</li><li>If "Unit for Quantity/Amount" is "tonne", Effective Quantity = User Input Quantity × 1000 (to convert to kg for consistency with kg-based factors).</li></ul></li><li><strong>Emission Factor Value:</strong><ul><li>This is the `factor` value from the selected database entry or the (potentially converted) supplier-provided PCF.</li><li>All weight-based factors in the database or from suppliers (if per tonne) are effectively treated as `kgCO₂e/kg` for calculation. Spend-based factors are `kgCO₂e/EUR` (USD is treated as EUR for this MVP).</li></ul></li></ul><h3>4. Final Output Conversion</h3><p>The calculated "Total Emissions (kg CO₂e)" are then converted to tonnes for display:</p><p><code>Displayed Emissions (t CO₂e) = Total Emissions (kg CO₂e) / 1000</code></p><p>Numbers in the results (factor value, total emissions) are formatted with a space as a thousands separator and 2 decimal places for the final emissions (factors may show more precision).</p><h3>5. Emission Factor Database (`emissionFactorsDB`)</h3><p>This is a simplified internal JavaScript array containing objects, each representing an emission factor. Key fields include:</p><ul><li><code>id</code>: Unique identifier.</li><li><code>year</code>: Applicable year (e.g., 2023) or <code>null</code> if generic.</li><li><code>category</code>: Product/service category.</li><li><code>material</code>: Specific material (can be <code>null</code>).</li><li><code>process</code>: Specific process (can be <code>null</code>).</li><li><code>country</code>: Specific country or "Global" (can be <code>null</code>, implying Global).</li><li><code>factor</code>: The numerical emission factor value.</li><li><code>unit</code>: The unit of the factor (e.g., "kgCO2e/kg", "kgCO2e/EUR").</li><li><code>source</code>: The source of the emission factor data (e.g., "EcoInvent 3.9.1_Sim_DE_23").</li></ul><p>The database includes specific factors, more generic ones (where material, process, or country might be null/Global), and "Default Fallback" factors for cases where no primary matches are found.</p>
+                    <h3>3. Emission Calculation</h3><p>The core calculation is:</p><p><code>Total Emissions (kg CO₂e) = Effective Quantity × Emission Factor Value (in kgCO₂e per unit of Effective Quantity)</code></p><ul><li><strong>Effective Quantity:</strong><ul><li>If "Unit for Quantity/Amount" is "kg" or "EUR" or "USD", Effective Quantity = User Input Quantity.</li><li>If "Unit for Quantity/Amount" is "tonne", Effective Quantity = User Input Quantity × 1000 (to convert to kg for consistency with kg-based factors).</li></ul></li><li><strong>Emission Factor Value:</strong><ul><li>This is the `factor` value from the selected database entry or the (potentially converted) supplier-provided PCF.</li><li>All weight-based factors in the database or from suppliers (if per tonne) are effectively treated as `kgCO₂e/kg` for calculation. Spend-based factors are `kgCO₂e/EUR` (USD is treated as EUR for this MVP).</li></ul></li></ul><h3>4. Final Output Conversion & Formatting</h3><p>The calculated "Total Emissions (kg CO₂e)" are then converted to tonnes for display:</p><p><code>Displayed Emissions (t CO₂e) = Total Emissions (kg CO₂e) / 1000</code></p><p>Numbers in the results (factor value in table, total emissions) are formatted with a space as a thousands separator. The final emissions are displayed with 2 decimal places. Emission factors in the database table are displayed with up to 4 decimal places for precision.</p><h3>5. Emission Factor Database (`emissionFactorsDB`)</h3><p>This is a simplified internal JavaScript array containing objects, each representing an emission factor. Key fields include:</p><ul><li><code>id</code>: Unique identifier.</li><li><code>year</code>: Applicable year (e.g., 2023) or <code>null</code> if generic.</li><li><code>category</code>: Product/service category.</li><li><code>material</code>: Specific material (can be <code>null</code>).</li><li><code>process</code>: Specific process (can be <code>null</code>).</li><li><code>country</code>: Specific country or "Global" (can be <code>null</code>, implying Global).</li><li><code>factor</code>: The numerical emission factor value.</li><li><code>unit</code>: The unit of the factor (e.g., "kgCO2e/kg", "kgCO2e/EUR").</li><li><code>source</code>: The source of the emission factor data (e.g., "EcoInvent 3.9.1_Sim_DE_23").</li></ul><p>The database includes specific factors, more generic ones (where material, process, or country might be null/Global), and "Default Fallback" factors for cases where no primary matches are found.</p>
                 </div> 
             </div> 
         </section>
@@ -461,12 +478,16 @@
             const searchProcess = process?.trim().toLowerCase() || null;
             const searchCountry = country?.trim() || 'Global';
             let logicTrace = [`Reporting Year: ${reportingYear}. Targeting factors for category: '${category}', unit type: '${quantityUnitType}'.`];
+            if (searchMaterial) logicTrace.push(`  - User Material: '${searchMaterial}'`); else logicTrace.push(`  - User Material: (Not specified)`);
+            if (searchProcess) logicTrace.push(`  - User Process: '${searchProcess}'`); else logicTrace.push(`  - User Process: (Not specified)`);
+            if (searchCountry !== 'Global') logicTrace.push(`  - User Country: '${searchCountry}'`); else logicTrace.push(`  - User Country: Global (default or selected)`);
+
 
             let candidates = emissionFactorsDB.filter(f => 
                 f.category === category &&
                 (f.unit.includes(targetUnitSubstring) || (quantityUnitType === 'spend' && (f.unit.includes('kgCO2e/USD') || f.unit.includes('kgCO2e/EUR'))))
             );
-            logicTrace.push(`Found ${candidates.length} initial candidates for category '${category}' and unit type '${quantityUnitType}'.`);
+            logicTrace.push(`\nFound ${candidates.length} initial candidates for category '${category}' and unit type '${quantityUnitType}'.`);
 
             let usedFallbackCategory = false;
             if (!candidates.length) {
@@ -484,42 +505,45 @@
                 return { factor: null, logic: logicTrace.join('\n') };
             }
 
-            logicTrace.push("\nScoring candidates based on year and other specifics:");
+            logicTrace.push("\nScoring candidates:");
             const scoredCandidates = candidates.map(factor => {
-                let score = 0; // Base score for category and unit type match already applied by filtering
+                let score = 0; 
+                let scoreDetails = [];
                 const factorMaterial = factor.material?.toLowerCase() ?? null;
                 const factorProcess = factor.process?.toLowerCase() ?? null;
                 const factorCountry = factor.country ?? 'Global';
 
-                // Year scoring (refined "most recent" logic)
-                if (factor.year === reportingYear) { // Exact match
-                    score += 100;
-                } else if (factor.year && factor.year < reportingYear) { // Past year
-                    // Higher score for more recent past years. Max 80. Diminishes by 5 for each year older.
-                    score += Math.max(20, 80 - (reportingYear - factor.year) * 5); 
-                } else if (factor.year === null) { // Generic year
-                    score += 60;
-                } else if (factor.year && factor.year > reportingYear) { // Future year
-                    // Lower score for future years. Max 40. Diminishes by 5 for each year further.
-                    score += Math.max(10, 40 - (factor.year - reportingYear) * 5);
+                // Year scoring
+                if (factor.year === reportingYear) { score += 100; scoreDetails.push("Year Exact Match: +100"); } 
+                else if (factor.year && factor.year < reportingYear) { 
+                    let yearScore = Math.max(20, 80 - (reportingYear - factor.year) * 5); score += yearScore; 
+                    scoreDetails.push(`Year Past (${factor.year}): +${yearScore}`);
+                } else if (factor.year === null) { score += 60; scoreDetails.push("Year Generic: +60"); } 
+                else if (factor.year && factor.year > reportingYear) { 
+                    let yearScore = Math.max(10, 40 - (factor.year - reportingYear) * 5); score += yearScore;
+                    scoreDetails.push(`Year Future (${factor.year}): +${yearScore}`);
                 }
 
-                // Other criteria scoring
-                if (searchMaterial && factorMaterial === searchMaterial) { score += 50; }
-                else if (!searchMaterial && !factorMaterial) { score += 10; }
-                else if (searchMaterial && !factorMaterial) { score -=5; }
+                // Material scoring
+                if (searchMaterial && factorMaterial === searchMaterial) { score += 50; scoreDetails.push("Material Exact: +50"); } 
+                else if (!searchMaterial && !factorMaterial) { score += 25; scoreDetails.push("Material Both Generic: +25"); } // Boost for both generic
+                else if (searchMaterial && !factorMaterial) { score += 5; scoreDetails.push("Material User Specific, Factor Generic: +5"); } // User specific, factor generic is acceptable
+                else if (!searchMaterial && factorMaterial) { score -= 15; scoreDetails.push("Material User Generic, Factor Specific: -15"); } // Penalty if user wants generic but factor is specific
                 
-                if (searchProcess && factorProcess === searchProcess) { score += 30; }
-                else if (!searchProcess && !factorProcess) { score += 5; }
-                else if (searchProcess && !factorProcess) { score -=3; }
+                // Process scoring
+                if (searchProcess && factorProcess === searchProcess) { score += 30; scoreDetails.push("Process Exact: +30"); } 
+                else if (!searchProcess && !factorProcess) { score += 15; scoreDetails.push("Process Both Generic: +15"); } // Boost for both generic
+                else if (searchProcess && !factorProcess) { score += 3; scoreDetails.push("Process User Specific, Factor Generic: +3"); } // User specific, factor generic is acceptable
+                else if (!searchProcess && factorProcess) { score -= 10; scoreDetails.push("Process User Generic, Factor Specific: -10"); } // Penalty if user wants generic but factor is specific
 
-                if (factorCountry === searchCountry) { score += 20; }
-                else if (factorCountry === 'Global' && searchCountry !== 'Global') { score +=10; }
-                else if (factorCountry !== 'Global' && searchCountry === 'Global') { score +=5;}
+                // Country scoring
+                if (factorCountry === searchCountry) { score += 20; scoreDetails.push(`Country Exact (${searchCountry}): +20`); } 
+                else if (factorCountry === 'Global' && searchCountry !== 'Global') { score +=10; scoreDetails.push("Country Factor Global, User Specific: +10"); } 
+                else if (factorCountry !== 'Global' && searchCountry === 'Global') { score +=5; scoreDetails.push("Country Factor Specific, User Global: +5");}
 
-                if (factor.category === 'Default Fallback' && !usedFallbackCategory) { score -= 1000; }
+                if (factor.category === 'Default Fallback' && !usedFallbackCategory) { score -= 1000; scoreDetails.push("Used Default Fallback when specific category factors existed: -1000");}
                 
-                logicTrace.push(`  Candidate ID ${factor.id} (Year: ${factor.year ?? 'Any'}, Cat: '${factor.category}', Mat: '${factorMaterial || 'N/A'}', Proc: '${factorProcess || 'N/A'}', Country: '${factorCountry}'): Final Score: ${score}`);
+                logicTrace.push(`  Candidate ID ${factor.id} (Y:${factor.year ?? 'Any'}, M:${factorMaterial ?? 'N/A'}, P:${factorProcess ?? 'N/A'}, C:${factorCountry}) Score: ${score} [${scoreDetails.join('; ')}]`);
                 return { ...factor, score };
             });
 
@@ -599,11 +623,15 @@
                 totalEmissionsSpan.textContent = formatNumber(calculatedEmissionsTonnes, 2); 
                 factorDetailsDiv.classList.remove('hidden'); resultsDiv.classList.remove('hidden');
                 showMessage('Emissions calculated successfully!', 'success');
+                // Scroll to results
+                resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
             } else {
                 noFactorFoundDiv.textContent = `Critical Error: Mismatch between final factor unit type ('${factorUnitType}') and quantity unit type ('${quantityUnitType}'). Cannot calculate. Logic: ${currentFactorLogic.replace(/\n/g, '<br>')}`;
                 noFactorFoundDiv.classList.remove('hidden'); resultsDiv.classList.remove('hidden'); 
                 factorDetailsDiv.classList.add('hidden'); 
                 showMessage('Factor and quantity unit mismatch.', 'error');
+                 // Scroll to results even for error
+                resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         });
 
